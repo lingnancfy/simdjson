@@ -1,6 +1,8 @@
 #ifndef TEST_MACROS_H
 #define TEST_MACROS_H
 
+#include <unistd.h>
+
 #ifndef SIMDJSON_BENCHMARK_DATA_DIR
 #define SIMDJSON_BENCHMARK_DATA_DIR "jsonexamples/"
 #endif
@@ -101,5 +103,49 @@ simdjson_really_inline bool assert_true(bool value, const char *operation = "res
 #define TEST_FAIL(MESSAGE)              do { std::cerr << "FAIL: " << (MESSAGE) << std::endl; return false; } while (0);
 #define TEST_SUCCEED()                  do { return true; } while (0);
 
+template<typename F>
+int test_main(int argc, char *argv[], const F& test_function) {
+  std::cout << std::unitbuf;
+  int c;
+  while ((c = getopt(argc, argv, "a:")) != -1) {
+    switch (c) {
+    case 'a': {
+      const simdjson::implementation *impl = simdjson::available_implementations[optarg];
+      if (!impl) {
+        std::fprintf(stderr, "Unsupported architecture value -a %s\n", optarg);
+        return EXIT_FAILURE;
+      }
+      simdjson::active_implementation = impl;
+      break;
+    }
+    default:
+      std::fprintf(stderr, "Unexpected argument %c\n", c);
+      return EXIT_FAILURE;
+    }
+  }
+
+  // this is put here deliberately to check that the documentation is correct (README),
+  // should this fail to compile, you should update the documentation:
+  if (simdjson::active_implementation->name() == "unsupported") {
+    std::printf("unsupported CPU\n");
+    std::abort();
+  }
+  // We want to know what we are testing.
+  // Next line would be the runtime dispatched implementation but that's not necessarily what gets tested.
+  // std::cout << "Running tests against this implementation: " << simdjson::active_implementation->name();
+  // Rather, we want to display builtin_implementation()->name().
+  // In practice, by default, we often end up testing against fallback.
+  std::cout << "builtin_implementation -- " << simdjson::builtin_implementation()->name() << std::endl;
+  std::cout << "------------------------------------------------------------" << std::endl;
+
+  std::cout << "Running tests." << std::endl;
+  if (test_function()) {
+    std::cout << "Success!" << std::endl;
+    return EXIT_SUCCESS;
+  } else {
+    std::cerr << "FAILED." << std::endl;
+    return EXIT_FAILURE;
+  }
+}
 
 #endif // TEST_MACROS_H

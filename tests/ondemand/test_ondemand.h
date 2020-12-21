@@ -28,4 +28,17 @@ bool test_ondemand_doc(const simdjson::padded_string &json, const F& f) {
   return test_ondemand_doc(parser, json, f);
 }
 
+#define ONDEMAND_SUBTEST(NAME, JSON, TEST) \
+{ \
+  std::cout << "- Subtest " << (NAME) << " - JSON: " << (JSON) << " ..." << std::endl; \
+  if (!test_ondemand_doc(JSON##_padded, [&](auto doc) { \
+    return (TEST); \
+  })) { \
+    return false; \
+  } \
+}
+
+const size_t AMAZON_CELLPHONES_NDJSON_DOC_COUNT = 793;
+#define SIMDJSON_SHOW_DEFINE(x) printf("%s=%s\n", #x, STRINGIFY(x))
+
 #endif // ONDEMAND_TEST_ONDEMAND_H
